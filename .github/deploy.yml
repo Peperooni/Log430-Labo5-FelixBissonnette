@@ -1,0 +1,54 @@
+name: Deploy (self-hosted)
+
+on:
+  push:
+    branches: [ main, master ]
+
+jobs:
+  deploy:
+    runs-on: self-hosted
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Show Docker info
+        run: |
+          docker --version
+          docker compose version
+
+      - name: Create .env file
+        run: |
+          cat <<EOF > .env
+          DB_HOST=mysql
+          DB_PORT=3306
+          DB_NAME=labo05_db
+          DB_USER=labo05
+          DB_PASS=labo05
+          REDIS_HOST=redis
+          REDIS_PORT=6379
+          REDIS_DB=0
+          EOF
+
+      - name: Ensure network exists
+        run: |
+          docker network inspect labo05-network >/dev/null 2>&1 || \
+          docker network create labo05-network
+
+      - name: Pull latest images
+        run: docker compose pull
+
+      - name: Build services
+        run: docker compose build
+
+      - name: Restart stack
+        run: |
+          docker compose down
+          docker compose up -d
+
+      - name: Show running containers
+        run: docker compose ps
+
+      - name: Show logs on failure
+        if: failure()
+        run: docker compose logs --tail=200
