@@ -27,7 +27,8 @@ def add_order(user_id: int, items: list):
     try:
         logger.debug("Commencer : ajout de commande")
         products_query = session.query(Product).filter(Product.id.in_(product_ids)).all()
-        price_map = {product.id: product.price for product in products_query}
+        price_map = {pro
+                     duct.id: product.price for product in products_query}
         total_amount = 0
         order_items = []
         

@@ -14,18 +14,30 @@ class FlaskAPIUser(HttpUser):
         """Called every time a Locust user spawns"""
         print("Welcome, user!")
 
-    @task(1)
-    def test_rate_limit(self):
-        """Test pour vérifier le rate limiting"""
-        payload = {
+    @task(1) 
+    def orders(self):
+        """Test POST /orders endpoint (write)"""
+        mock_order = {
             "user_id": random.randint(1, 3),
             "items": [{"product_id": random.randint(1, 4), "quantity": random.randint(1, 10)}] 
         }   
-        
-        response = self.client.post(
-            "/store-manager-api/orders",
-            json=payload
-        )
-        
-        if response.status_code == 503:  # HTTP 503 Service Unavailable
-            print("Rate limit atteint!")
+
+        # Randomly add a second item (30% of times)
+        if random.randint(1, 10) <= 3:
+            mock_order["items"].append({"product_id": random.randint(1, 4), "quantity": random.randint(1, 10)})
+
+        with self.client.post("/store-manager-api/orders", 
+                            json=mock_order, 
+                            headers={"Content-Type": "application/json"},
+                            catch_response=True) as response:
+            try:
+                data = response.json()
+                if response.status_code == 201:
+                    if "order_id" in data:
+                        response.success()
+                    else:
+                        response.failure("Aucun ID renvoyé pour la commande créée")
+                else:
+                    response.failure(f"Erreur : {response.status_code} - {data.get('error', 'Unknown error')}")
+            except ValueError:
+                response.failure(f"Invalid JSON response: {response.text}")
